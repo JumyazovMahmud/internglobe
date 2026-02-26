@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "697199258846",
+    "firebase_url": "https://intern-globe-default-rtdb.firebaseio.com",
+    "project_id": "intern-globe",
+    "storage_bucket": "intern-globe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697199258846:android:8f4a6c890a243bbaeba64f",
+        "android_client_info": {
+          "package_name": "com.example.internglobe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697199258846-2f95v9l8qsdvfulian27d23580ql3cdq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.internglobe",
+            "certificate_hash": "d5a485744d0863e5f16c12a5d0b5f6b7289a5790"
+          }
+        },
+        {
+          "client_id": "697199258846-5ob1ri9qfeovbgj8k0f5mvas1i6q6so2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2PTP9G41rtq_SunlKU3eYDuCxGvPEcTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697199258846-5ob1ri9qfeovbgj8k0f5mvas1i6q6so2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,43 @@
+name: internglobe
+description: Global internship finder app
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  url_launcher: ^6.3.0
+  flutter_spinkit: ^5.2.1
+  intl: ^0.20.2
+  firebase_core: ^3.15.2
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.4.0
+  firebase_storage: ^12.3.0
+  image_picker: ^1.1.0
+  flutter_map: ^7.0.1
+  latlong2: ^0.9.1
+  shared_preferences: ^2.2.2
+  firebase_database: ^11.3.10
+  supabase_flutter: ^2.3.0
+  flutter_svg: ^2.0.9        # ← added for logo
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.1  # ← moved here, it's a dev dependency
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/internglobe_logo.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/internglobe_logo.svg
+    - assets/internglobe_logo.png          # ← register your PNG asset (for app icon)
