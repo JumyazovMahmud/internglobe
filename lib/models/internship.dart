@@ -29,22 +29,24 @@ class Internship {
 
   factory Internship.fromJson(Map<String, dynamic> json) {
     return Internship(
-      id: json['id'],
-      title: json['title'],
-      organization: json['organization'],
-      url: json['url'],
-      remote: json['remote_derived'] ?? false,
-      cities: (json['cities_derived'] as List?)?.cast<String>(),
-      countries: (json['countries_derived'] as List?)?.cast<String>(),
-      locationsDerived: (json['locations_derived'] as List?)?.cast<String>(),
-      organizationLogo: json['organization_logo'],
-      datePosted: json['date_posted'] != null ? DateTime.parse(json['date_posted']) : null,
-      latsDerived: (json['lats_derived'] as List?)?.cast<double>(),
-      lngsDerived: (json['lngs_derived'] as List?)?.cast<double>(),
+      id: json['id'] as String,
+      title: json['title'] as String,
+      organization: json['organization'] as String,
+      url: json['url'] as String,
+      remote: json['remote_derived'] as bool? ?? false,
+      cities: (json['cities_derived'] as List?)?.map((e) => e.toString()).toList(),
+      countries: (json['countries_derived'] as List?)?.map((e) => e.toString()).toList(),
+      locationsDerived: (json['locations_derived'] as List?)?.map((e) => e.toString()).toList(),
+      organizationLogo: json['organization_logo'] as String?,
+      datePosted: json['date_posted'] != null ? DateTime.parse(json['date_posted'] as String) : null,
+      // RTDB stores numbers as num, so cast carefully
+      latsDerived: (json['lats_derived'] as List?)?.map((e) => (e as num).toDouble()).toList(),
+      lngsDerived: (json['lngs_derived'] as List?)?.map((e) => (e as num).toDouble()).toList(),
     );
   }
 
-  // Add this toJson method for caching
+  /// Null-safe toJson — RTDB will reject or corrupt writes that contain null
+  /// values, so we only include keys that actually have a value.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -52,13 +54,14 @@ class Internship {
       'organization': organization,
       'url': url,
       'remote_derived': remote,
-      'cities_derived': cities,
-      'countries_derived': countries,
-      'locations_derived': locationsDerived,
-      'organization_logo': organizationLogo,
-      'date_posted': datePosted?.toIso8601String(),
-      'lats_derived': latsDerived,
-      'lngs_derived': lngsDerived,
+      if (cities != null) 'cities_derived': cities,
+      if (countries != null) 'countries_derived': countries,
+      if (locationsDerived != null) 'locations_derived': locationsDerived,
+      if (organizationLogo != null) 'organization_logo': organizationLogo,
+      if (datePosted != null) 'date_posted': datePosted!.toIso8601String(),
+      // Convert to List<num> — RTDB does not support List<double> directly
+      if (latsDerived != null) 'lats_derived': latsDerived!.map((e) => e).toList(),
+      if (lngsDerived != null) 'lngs_derived': lngsDerived!.map((e) => e).toList(),
     };
   }
 }

@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,17 +18,85 @@ class ApplyScreen extends StatefulWidget {
 class _ApplyScreenState extends State<ApplyScreen> {
   Internship get internship => widget.internship;
 
-  Future<void> _apply() async {
-    debugPrint('URL is: ${internship.url}');
+  bool _isSaved = false;
+  bool _saveLoading = false;
+
+  // Path: users/{uid}/saved_internships/{internshipId}
+  DatabaseReference? get _saveRef {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return null;
+    return FirebaseDatabase.instance
+        .ref('users/$uid/saved_internships/${internship.id}');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfSaved();
+  }
+
+  Future<void> _checkIfSaved() async {
+    final ref = _saveRef;
+    if (ref == null) return;
+
+    final snapshot = await ref.get();
+    if (mounted) {
+      setState(() => _isSaved = snapshot.exists);
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in to save internships')),
+      );
+      return;
+    }
+
+    final ref = _saveRef!;
+    setState(() => _saveLoading = true);
 
     try {
-      final uri = Uri.parse(internship.url);
-      debugPrint('Parsed URI: $uri');
-      debugPrint('Scheme: ${uri.scheme}');
+      if (_isSaved) {
+        await ref.remove();
+        if (mounted) {
+          setState(() => _isSaved = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Removed from saved')),
+          );
+        }
+      } else {
+        // Store the full internship JSON so the Saved tab can reconstruct
+        // the Internship object without any extra API call.
+        await ref.set({
+          'savedAt': ServerValue.timestamp,
+          ...internship.toJson(),
+        });
+        if (mounted) {
+          setState(() => _isSaved = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Saved!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saveLoading = false);
+    }
+  }
 
+  Future<void> _apply() async {
+    debugPrint('URL is: ${internship.url}');
+    try {
+      final uri = Uri.parse(internship.url);
       final canLaunch = await canLaunchUrl(uri);
       debugPrint('canLaunchUrl: $canLaunch');
-
       final result = await launchUrl(uri, mode: LaunchMode.externalApplication);
       debugPrint('launchUrl result: $result');
     } catch (e) {
@@ -68,6 +136,26 @@ class _ApplyScreenState extends State<ApplyScreen> {
               icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
               onPressed: () => Navigator.pop(context),
             ),
+            actions: [
+              _saveLoading
+                  ? const Padding(
+                padding: EdgeInsets.all(14),
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                ),
+              )
+                  : IconButton(
+                icon: Icon(
+                  _isSaved ? Icons.bookmark : Icons.bookmark_border,
+                  color: Colors.white,
+                ),
+                tooltip: _isSaved ? 'Unsave' : 'Save',
+                onPressed: _toggleSave,
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
@@ -333,7 +421,8 @@ class _InfoBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 40),
+      constraints:
+      BoxConstraints(maxWidth: MediaQuery.of(context).size.width - 40),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(10),

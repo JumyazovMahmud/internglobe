@@ -5,7 +5,7 @@ import '../models/internship.dart';
 class ApiService {
   static const String baseUrl = 'https://internships-api.p.rapidapi.com/active-ats-7d';
   static const Map<String, String> headers = {
-    'X-RapidAPI-Key': '4b22fa43c6msh42a37a725ed6049p13c8c2jsnaebc0a08f847',
+    'X-RapidAPI-Key': '9daddf84ccmshff55fdfab91ff4ep1d3b04jsnd2d3c03217ba',
     'X-RapidAPI-Host': 'internships-api.p.rapidapi.com',
   };
 

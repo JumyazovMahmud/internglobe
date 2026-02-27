@@ -39,6 +39,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   int _forYouPage = 1;
   bool _forYouHasMore = true;
 
+  // ── Saved state ─────────────────────────────────────────────
+  List<Internship> _savedInternships = [];
+  bool _savedLoading = false;
+  bool _savedInitialLoad = true;
+  String? _savedError;
+
   // ── Shared UI state ─────────────────────────────────────────
   final _searchController = TextEditingController();
   final _regionController = TextEditingController();
@@ -144,11 +150,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  /// Called by ProfileScreen when the user saves new interests.
   void _onInterestsUpdated(List<String> newInterests) {
     setState(() {
       _userInterests = newInterests;
-      // Reset For You so it reloads with the new interests
       _forYouInternships.clear();
       _forYouPage = 1;
       _forYouHasMore = true;
@@ -156,9 +160,100 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       _forYouInitialLoad = true;
       _forYouError = null;
     });
-    // If the user is currently on the For You tab, reload immediately
-    if (_tabIndex == 1) {
-      _loadForYou();
+    if (_tabIndex == 1) _loadForYou();
+  }
+
+  // ── Saved internships (Realtime Database) ────────────────────
+
+  // RTDB stores Dart Lists as {0: val, 1: val, ...} maps.
+  // These helpers convert them back to proper typed lists.
+  List<String>? _rtdbToStringList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return value.map((e) => e.toString()).toList();
+    if (value is Map) return value.values.map((e) => e.toString()).toList();
+    return null;
+  }
+
+  List<double>? _rtdbToDoubleList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return value.map((e) => (e as num).toDouble()).toList();
+    if (value is Map) return value.values.map((e) => (e as num).toDouble()).toList();
+    return null;
+  }
+
+  // Converts a raw RTDB map into the JSON shape Internship.fromJson expects.
+  Map<String, dynamic> _rtdbEntryToJson(Map<dynamic, dynamic> raw) {
+    return {
+      'id': raw['id'],
+      'title': raw['title'],
+      'organization': raw['organization'],
+      'url': raw['url'],
+      'remote_derived': raw['remote_derived'] ?? false,
+      'organization_logo': raw['organization_logo'],
+      'date_posted': raw['date_posted'],
+      'cities_derived': _rtdbToStringList(raw['cities_derived']),
+      'countries_derived': _rtdbToStringList(raw['countries_derived']),
+      'locations_derived': _rtdbToStringList(raw['locations_derived']),
+      'lats_derived': _rtdbToDoubleList(raw['lats_derived']),
+      'lngs_derived': _rtdbToDoubleList(raw['lngs_derived']),
+    };
+  }
+
+  Future<void> _loadSavedInternships() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _savedLoading = false;
+        _savedError = 'Sign in to see saved internships.';
+      });
+      return;
+    }
+
+    setState(() {
+      _savedLoading = true;
+      _savedError = null;
+      _savedInitialLoad = false;
+    });
+
+    try {
+      final snapshot = await FirebaseDatabase.instance
+          .ref('users/${user.uid}/saved_internships')
+          .get();
+
+      if (!mounted) return;
+
+      if (!snapshot.exists || snapshot.value == null) {
+        setState(() {
+          _savedInternships = [];
+          _savedLoading = false;
+        });
+        return;
+      }
+
+      final raw = Map<dynamic, dynamic>.from(snapshot.value as Map);
+      final entries = <(int, Internship)>[];
+
+      for (final entry in raw.entries) {
+        final entryMap = Map<dynamic, dynamic>.from(entry.value as Map);
+        final savedAt = (entryMap['savedAt'] as num?)?.toInt() ?? 0;
+        final internship = Internship.fromJson(_rtdbEntryToJson(entryMap));
+        entries.add((savedAt, internship));
+      }
+
+      entries.sort((a, b) => b.$1.compareTo(a.$1));
+
+      if (!mounted) return;
+      setState(() {
+        _savedInternships = entries.map((e) => e.$2).toList();
+        _savedLoading = false;
+      });
+    } catch (e, stack) {
+      debugPrint('_loadSavedInternships error: $e\n$stack');
+      if (!mounted) return;
+      setState(() {
+        _savedError = e.toString().replaceAll('Exception: ', '');
+        _savedLoading = false;
+      });
     }
   }
 
@@ -254,7 +349,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     try {
       if (!isLoadMore) {
-        // Fetch ALL interests in parallel
         final futures = _userInterests.map((interest) =>
             _apiService.fetchInternships(
               titleFilter: interest,
@@ -264,7 +358,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         final results = await Future.wait(futures);
         if (!mounted) return;
 
-        // Merge and deduplicate by URL
         final seen = <String>{};
         final deduped = results
             .expand((list) => list)
@@ -280,7 +373,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _forYouPage = 2;
         });
       } else {
-        // Load more: cycle through interests round-robin
         final interest = _userInterests[_forYouInterestIndex % _userInterests.length];
         final newInternships = await _apiService.fetchInternships(
           titleFilter: interest,
@@ -323,6 +415,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final screens = [
       _buildMainContent(),
+      _buildSavedScreen(),
       ProfileScreen(onInterestsUpdated: _onInterestsUpdated),
     ];
 
@@ -342,7 +435,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ),
         child: BottomNavigationBar(
           currentIndex: _bottomNavIndex,
-          onTap: (i) => setState(() => _bottomNavIndex = i),
+          onTap: (i) {
+            setState(() => _bottomNavIndex = i);
+            // Always reload when tapping Saved tab so unsave/save in
+            // ApplyScreen is immediately reflected.
+            if (i == 1) {
+              _loadSavedInternships();
+            }
+          },
           selectedItemColor: Colors.blue[700],
           unselectedItemColor: Colors.grey[400],
           elevation: 0,
@@ -355,6 +455,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               label: 'Discover',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.bookmark_border),
+              activeIcon: Icon(Icons.bookmark),
+              label: 'Saved',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               activeIcon: Icon(Icons.person),
               label: 'Profile',
@@ -365,11 +470,139 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  // ── Saved Screen ─────────────────────────────────────────────
+
+  Widget _buildSavedScreen() {
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue[700]!, Colors.blue[500]!],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Saved',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your bookmarked internships',
+                  style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.9)),
+                ),
+              ],
+            ),
+          ),
+
+          if (!_savedInitialLoad && _savedInternships.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: Row(
+                children: [
+                  Text(
+                    '${_savedInternships.length} saved',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.refresh, color: Colors.blue[700], size: 20),
+                    onPressed: _loadSavedInternships,
+                    tooltip: 'Refresh',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+
+          Expanded(child: _buildSavedBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavedBody() {
+    if (_savedLoading) return _buildLoading();
+    if (_savedError != null) return _buildError(_savedError!, _loadSavedInternships);
+    if (_savedInternships.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.bookmark_border, size: 80, color: Colors.grey[300]),
+              const SizedBox(height: 20),
+              Text(
+                'No saved internships',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Tap the bookmark icon on any internship to save it here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => setState(() => _bottomNavIndex = 0),
+                icon: const Icon(Icons.explore),
+                label: const Text('Browse Internships'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadSavedInternships,
+      color: Colors.blue[700],
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        itemCount: _savedInternships.length,
+        itemBuilder: (context, i) => _animatedCard(_savedInternships[i], i),
+      ),
+    );
+  }
+
+  // ── Main Content (Discover + For You tabs) ───────────────────
+
   Widget _buildMainContent() {
     return SafeArea(
       child: Column(
         children: [
-          // ── Header ──────────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -440,7 +673,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
 
-          // ── Filters (Discover only) ──────────────────────────
           if (_tabIndex == 0) ...[
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -589,7 +821,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             const SizedBox(height: 8),
           ],
 
-          // ── For You header ───────────────────────────────────
           if (_tabIndex == 1 && _userInterests.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
@@ -689,7 +920,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => setState(() => _bottomNavIndex = 1),
+                onPressed: () => setState(() => _bottomNavIndex = 2),
                 icon: const Icon(Icons.edit),
                 label: const Text('Go to Profile'),
                 style: ElevatedButton.styleFrom(
@@ -745,7 +976,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => ApplyScreen(internship: internship)),
-        ),
+        ).then((_) {
+          if (_bottomNavIndex == 1) _loadSavedInternships();
+        }),
       ),
     );
   }
