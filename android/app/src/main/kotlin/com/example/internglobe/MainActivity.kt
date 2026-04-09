@@ -1,4 +1,4 @@
-package com.example.internglobe
+package app.mahmudjon.internglobe
 
 import io.flutter.embedding.android.FlutterActivity
 
