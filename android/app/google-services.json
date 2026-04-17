@@ -8,6 +8,42 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:697199258846:android:96e74a6d634805b5eba64f",
+        "android_client_info": {
+          "package_name": "app.mahmudjon.internglobe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "697199258846-5ob1ri9qfeovbgj8k0f5mvas1i6q6so2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2PTP9G41rtq_SunlKU3eYDuCxGvPEcTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "697199258846-5ob1ri9qfeovbgj8k0f5mvas1i6q6so2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "697199258846-belh0s4vhm6000e3r5sfpmcpc3jfj166.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.internglobe"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:697199258846:android:8f4a6c890a243bbaeba64f",
         "android_client_info": {
           "package_name": "com.example.internglobe"
@@ -38,6 +74,13 @@
             {
               "client_id": "697199258846-5ob1ri9qfeovbgj8k0f5mvas1i6q6so2.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "697199258846-belh0s4vhm6000e3r5sfpmcpc3jfj166.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.internglobe"
+              }
             }
           ]
         }
