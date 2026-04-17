@@ -1,3 +1,5 @@
+// internship_card.dart
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models/internship.dart';
 
@@ -32,7 +34,7 @@ class InternshipCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Logo
+                // Logo with proper error handling
                 Container(
                   width: 56,
                   height: 56,
@@ -42,29 +44,23 @@ class InternshipCard extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: internship.organizationLogo != null
-                        ? Image.network(
-                      internship.organizationLogo!,
+                    child: internship.organizationLogo != null &&
+                        internship.organizationLogo!.isNotEmpty
+                        ? CachedNetworkImage(
+                      imageUrl: internship.organizationLogo!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(Icons.business, size: 28, color: Colors.grey[400]);
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                                  : null,
-                            ),
-                          ),
-                        );
-                      },
+                      placeholder: (context, url) => const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Icon(
+                        Icons.business,
+                        size: 28,
+                        color: Colors.grey[400],
+                      ),
                     )
                         : Icon(Icons.business, size: 28, color: Colors.grey[400]),
                   ),
@@ -158,7 +154,6 @@ class InternshipCard extends StatelessWidget {
                   ),
                 ),
 
-                // Arrow
                 Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
               ],
             ),

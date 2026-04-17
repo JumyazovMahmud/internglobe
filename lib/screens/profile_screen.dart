@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -311,15 +312,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                           child: CircleAvatar(
                             radius: 55,
                             backgroundColor: Colors.grey[200],
-                            backgroundImage: _imageFile != null
-                                ? FileImage(_imageFile!)
-                                : (_profilePicUrl != null && _profilePicUrl!.isNotEmpty
-                                ? NetworkImage(_profilePicUrl!)
-                                : null) as ImageProvider?,
-                            child: (_imageFile == null &&
-                                (_profilePicUrl == null || _profilePicUrl!.isEmpty))
-                                ? Icon(Icons.person, size: 40, color: Colors.grey[400])
-                                : null,
+                            child: ClipOval(
+                              child: _imageFile != null
+                                  ? Image.file(_imageFile!, fit: BoxFit.cover)
+                                  : (_profilePicUrl != null && _profilePicUrl!.isNotEmpty
+                                  ? CachedNetworkImage(
+                                imageUrl: _profilePicUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => const CircularProgressIndicator(),
+                                errorWidget: (context, url, error) => Icon(Icons.person, size: 40, color: Colors.grey[400]),
+                              )
+                                  : Icon(Icons.person, size: 40, color: Colors.grey[400])),
+                            ),
                           ),
                         ),
                         Positioned(

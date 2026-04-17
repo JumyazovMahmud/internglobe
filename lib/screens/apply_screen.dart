@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -172,6 +173,8 @@ class _ApplyScreenState extends State<ApplyScreen> {
                   children: [
                     Row(
                       children: [
+                        // Inside FlexibleSpaceBar → background → Row → Container (logo part)
+
                         Container(
                           width: 52,
                           height: 52,
@@ -179,26 +182,25 @@ class _ApplyScreenState extends State<ApplyScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
+                              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 3)),
                             ],
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: internship.organizationLogo != null
-                                ? Image.network(
-                              internship.organizationLogo!,
+                            child: internship.organizationLogo != null && internship.organizationLogo!.isNotEmpty
+                                ? CachedNetworkImage(
+                              imageUrl: internship.organizationLogo!,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => Icon(
-                                  Icons.business,
-                                  size: 28,
-                                  color: Colors.blue[700]),
+                              placeholder: (context, url) => const Center(
+                                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (context, url, error) => Icon(
+                                Icons.business,
+                                size: 28,
+                                color: Colors.blue[700],
+                              ),
                             )
-                                : Icon(Icons.business,
-                                size: 28, color: Colors.blue[700]),
+                                : Icon(Icons.business, size: 28, color: Colors.blue[700]),
                           ),
                         ),
                         const SizedBox(width: 14),

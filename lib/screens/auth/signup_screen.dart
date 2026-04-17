@@ -130,7 +130,18 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   const SizedBox(height: 20),
                   // Logo
-                  Image.asset('assets/internglobe_logo.png', width: 90, height: 90),
+                  // In both login_screen.dart and signup_screen.dart
+
+                  Image.asset(
+                    'assets/internglobe_logo.png',
+                    width: 90,
+                    height: 90,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.work_outline,
+                      size: 90,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   const Text(
                     'Join InternGlobe!',

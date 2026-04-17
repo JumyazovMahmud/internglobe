@@ -101,6 +101,8 @@ class _SplashScreenState extends State<SplashScreen>
                           'assets/internglobe_logo.svg',
                           width: 120,
                           height: 120,
+                          placeholderBuilder: (context) => const CircularProgressIndicator(color: Colors.white),
+                          // error handling is limited for SVG, but this helps
                         ),
                       ),
                     ),
